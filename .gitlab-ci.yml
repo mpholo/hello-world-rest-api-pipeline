@@ -1,0 +1,42 @@
+image: maven:latest
+
+stages:
+  - Build
+  - Push
+
+before_script:
+  - docker load --input data/image.tar
+  - $(aws ecr get-login --no-include-email region us-west-2)
+
+Build:
+  stage: Build
+  before_script: []
+  script:
+    - echo "Maven compile started"
+    - mvn clean package
+    - mkdir data/
+    - docker build --compress -t aws-hello-world-rest-api .
+    - docker save --output data/image.tar aws-hello-world-rest-api
+  artifacts:
+    name: image
+    paths:
+      - data/
+
+Push Dev:
+  stage: Push
+  script:
+    - docker tag aws-hello-world-rest-api:latest $ECR_REPO:dev
+    - docker push $ECR_REPO:dev
+  rules:
+    - if: "$CI_COMMIT_BRANCH == 'main'"
+
+Push Release:
+  stage: Push
+  script:
+    - export TAGGED_ECR_REPO=$ECR_REPO:$(echo $CI_COMMIT_TAG | sed 's/-release//')
+    - docker tag  aws-hello-world-rest-api:latest $TAGGED_ECR_REPO
+    - docker push $TAGGED_ECR_REPO
+    - docker tag $TAGGED_ECR_REPO $ECR_REPO:latest
+    - docker push $ECR_REPO:latest
+  rules:
+    - if: "$CI_COMMIT_TAG =~ /^*-release$/"
