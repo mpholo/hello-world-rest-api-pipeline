@@ -1,4 +1,4 @@
-FROM openjdk:8-jdk-alpine
+FROM public.ecr.aws/k0l5c1j7/openjdk-8-jdk-alpine:latest
 VOLUME /tmp
 EXPOSE 80
 ADD target/*.jar app.jar
